@@ -1,0 +1,2011 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "\n",
+    "\n",
+    "This Part leaverages the dataset(`/databricks-datasets/wikipedia-datasets/data-001/clickstream/raw-uncompressed`), but we use Spark SQL/DataFrame this time. This dataset is about 1.2GB and has 22 million rows. It is stored on in a S3 bucket on Amazon AWS. Our Spark cluster will also be created on AWS. \n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 1: Explore data\n",
+    "\n",
+    "Use databrick filesystem commands `%fs ls` and `%fs head` to explore the click stream data. This should help you decide what are options you should use when loading the data as a spark dataframe."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>path</th><th>name</th><th>size</th></tr></thead><tbody><tr><td>dbfs:/databricks-datasets/wikipedia-datasets/data-001/clickstream/raw-uncompressed/2015_2_clickstream.tsv</td><td>2015_2_clickstream.tsv</td><td>1322171548</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%fs ls /databricks-datasets/wikipedia-datasets/data-001/clickstream/raw-uncompressed"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\">[Truncated to first 65536 bytes]\n",
+       "prev_id\tcurr_id\tn\tprev_title\tcurr_title\ttype\n",
+       "\t3632887\t121\tother-google\t!!\tother\n",
+       "\t3632887\t93\tother-wikipedia\t!!\tother\n",
+       "\t3632887\t46\tother-empty\t!!\tother\n",
+       "\t3632887\t10\tother-other\t!!\tother\n",
+       "64486\t3632887\t11\t!_(disambiguation)\t!!\tother\n",
+       "2061699\t2556962\t19\tLouden_Up_Now\t!!!_(album)\tlink\n",
+       "\t2556962\t25\tother-empty\t!!!_(album)\tother\n",
+       "\t2556962\t16\tother-google\t!!!_(album)\tother\n",
+       "\t2556962\t44\tother-wikipedia\t!!!_(album)\tother\n",
+       "64486\t2556962\t15\t!_(disambiguation)\t!!!_(album)\tlink\n",
+       "600744\t2556962\t297\t!!!\t!!!_(album)\tlink\n",
+       "\t6893310\t11\tother-empty\t!Hero_(album)\tother\n",
+       "1921683\t6893310\t26\t!Hero\t!Hero_(album)\tlink\n",
+       "\t6893310\t16\tother-wikipedia\t!Hero_(album)\tother\n",
+       "\t6893310\t23\tother-google\t!Hero_(album)\tother\n",
+       "8127304\t22602473\t16\tJericho_Rosales\t!Oka_Tokat\tlink\n",
+       "35978874\t22602473\t20\tList_of_telenovelas_of_ABS-CBN\t!Oka_Tokat\tlink\n",
+       "\t22602473\t57\tother-google\t!Oka_Tokat\tother\n",
+       "\t22602473\t12\tother-wikipedia\t!Oka_Tokat\tother\n",
+       "\t22602473\t23\tother-empty\t!Oka_Tokat\tother\n",
+       "7360687\t22602473\t10\tRica_Peralejo\t!Oka_Tokat\tlink\n",
+       "37104582\t22602473\t11\tJeepney_TV\t!Oka_Tokat\tlink\n",
+       "34376590\t22602473\t22\tOka_Tokat_(2012_TV_series)\t!Oka_Tokat\tlink\n",
+       "\t6810768\t20\tother-wikipedia\t!T.O.O.H.!\tother\n",
+       "\t6810768\t81\tother-google\t!T.O.O.H.!\tother\n",
+       "31976181\t6810768\t51\tList_of_death_metal_bands,_!–K\t!T.O.O.H.!\tlink\n",
+       "\t6810768\t35\tother-empty\t!T.O.O.H.!\tother\n",
+       "\t3243047\t21\tother-empty\t!_(album)\tother\n",
+       "1337475\t3243047\t208\tThe_Dismemberment_Plan\t!_(album)\tlink\n",
+       "3284285\t3243047\t78\tThe_Dismemberment_Plan_Is_Terrified\t!_(album)\tlink\n",
+       "\t3243047\t28\tother-wikipedia\t!_(album)\tother\n",
+       "2098292\t899480\t58\tUnited_States_military_award_devices\t&quot;A&quot;_Device\tlink\n",
+       "194844\t899480\t15\tUSS_Yorktown_(CV-5)\t&quot;A&quot;_Device\tlink\n",
+       "\t899480\t17\tother-google\t&quot;A&quot;_Device\tother\n",
+       "\t899480\t13\tother-empty\t&quot;A&quot;_Device\tother\n",
+       "\t899480\t29\tother-wikipedia\t&quot;A&quot;_Device\tother\n",
+       "878246\t899480\t11\tAmerican_Defense_Service_Medal\t&quot;A&quot;_Device\tlink\n",
+       "855901\t899480\t24\tOverseas_Service_Ribbon\t&quot;A&quot;_Device\tother\n",
+       "206427\t899480\t33\tUSS_Ranger_(CV-4)\t&quot;A&quot;_Device\tlink\n",
+       "773691\t899480\t47\tAntarctica_Service_Medal\t&quot;A&quot;_Device\tlink\n",
+       "2301720\t1282996\t43\tKinsey_Millhone\t&quot;A&quot;_Is_for_Alibi\tlink\n",
+       "\t1282996\t45\tother-empty\t&quot;A&quot;_Is_for_Alibi\tother\n",
+       "\t1282996\t10\tother-yahoo\t&quot;A&quot;_Is_for_Alibi\tother\n",
+       "470006\t1282996\t207\tSue_Grafton\t&quot;A&quot;_Is_for_Alibi\tlink\n",
+       "\t1282996\t18\tother-other\t&quot;A&quot;_Is_for_Alibi\tother\n",
+       "\t1282996\t31\tother-wikipedia\t&quot;A&quot;_Is_for_Alibi\tother\n",
+       "\t1282996\t272\tother-google\t&quot;A&quot;_Is_for_Alibi\tother\n",
+       "39606873\t1282996\t10\t&quot;W&quot;_Is_for_Wasted\t&quot;A&quot;_Is_for_Alibi\tlink\n",
+       "26181056\t9003666\t17\tAnd\t&quot;And&quot;_theory_of_conservatism\tlink\n",
+       "\t9003666\t109\tother-wikipedia\t&quot;And&quot;_theory_of_conservatism\tother\n",
+       "\t9003666\t18\tother-google\t&quot;And&quot;_theory_of_conservatism\tother\n",
+       "\t39072529\t49\tother-google\t&quot;Bassy&quot;_Bob_Brockmann\tother\n",
+       "\t39072529\t10\tother-other\t&quot;Bassy&quot;_Bob_Brockmann\tother\n",
+       "11273993\t\t15\tColt_1851_Navy_Revolver\t&quot;Bigfoot&quot;_Wallace\tredlink\n",
+       "12571133\t25033979\t12\t&quot;V&quot;_Is_for_Vagina\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tlink\n",
+       "113468\t25033979\t24\tThe_Mission\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tlink\n",
+       "14096078\t25033979\t15\tTrent_Reznor_discography\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "\t25033979\t42\tother-empty\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "1375614\t25033979\t15\tTapeworm_(band)\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "159547\t25033979\t25\tMilla_Jovovich\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "28639397\t25033979\t73\tSound_into_Blood_into_Wine\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tlink\n",
+       "1893465\t25033979\t30\tCarina_Round\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "33622887\t25033979\t10\tConditions_of_My_Parole\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tlink\n",
+       "147692\t25033979\t25\tTim_Alexander\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "4619790\t25033979\t593\tPuscifer\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tlink\n",
+       "\t25033979\t36\tother-wikipedia\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "\t25033979\t93\tother-google\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\tother\n",
+       "69161\t\t51\tTết\t&quot;Chúc_Mừng_Năm_Mới&quot;_or_best_wishes_for_the_new_year.\tredlink\n",
+       "1438509\t\t14\tList_of_Old_West_gunfighters\t&quot;Cool_Hand_Conor&quot;_O'Neill\tredlink\n",
+       "\t331586\t6820\tother-google\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "\t331586\t20\tother-twitter\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "\t331586\t781\tother-wikipedia\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "489033\t331586\t59\tList_of_Academy_Awards_ceremonies\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "10040606\t331586\t38\tList_of_Australian_films\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "2564144\t331586\t154\tCrocodile_Dundee_in_Los_Angeles\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "6127928\t331586\t14\tBobby_Alto\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "152171\t331586\t13\tBaz_Luhrmann\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "8078282\t331586\t348\tAustralia_(2008_film)\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "37386608\t331586\t66\t2015_in_film\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "34557\t331586\t12\t1980s\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1118809\t331586\t297\t&quot;Crocodile&quot;_Dundee_II\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "7033\t331586\t52\tCaitlin_Clarke\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "72766\t331586\t31\tDundee_(disambiguation)\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "171612\t331586\t221\t1986_in_film\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "2376452\t331586\t34\tAustralian_New_Wave\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1248074\t331586\t60\tDavid_Gulpilil\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "865241\t331586\t10\tCrocodile_Hunter\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "196020\t331586\t12\tCrocodilia\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "643649\t331586\t85\tList_of_most_watched_television_broadcasts\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "8306521\t331586\t13\tAnne_Carlisle\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1448969\t331586\t18\tBart_vs._Australia\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "70209\t331586\t153\tCinema_of_Australia\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "4008173\t331586\t18\t59th_Academy_Awards\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "331460\t331586\t17\tBowie_knife\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "37882\t331586\t21\tCrocodile\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "44789934\t331586\t1283\tDeaths_in_2015\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "22344579\t331586\t30\tAcademy_Award_for_Best_Original_Screenplay\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "1872502\t331586\t10\tBoy-Scoutz_'n_the_Hood\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "5644\t331586\t13\tComedy_film\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "458340\t331586\t10\tList_of_films_set_in_New_York_City\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "905528\t331586\t20\tList_of_films_set_in_Australia\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "19924718\t331586\t12\tHello_Kitty's_Furry_Tale_Theater\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1422400\t331586\t147\tLinda_Kozlowski\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "10449888\t331586\t28\tList_of_Paramount_Pictures_films\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "11730578\t331586\t20\tList_of_American_films_of_1986\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "2321513\t331586\t45\tJohn_Meillon\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "\t331586\t910\tother-empty\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "238004\t331586\t15\tThe_Rescuers_Down_Under\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "483895\t331586\t13\tYoung_Einstein\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "6534317\t331586\t21\tThe_Man_from_Snowy_River_(1982_film)\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "61066\t331586\t11\tSkippy_the_Bush_Kangaroo\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "10670306\t331586\t83\tMichael_&quot;Crocodile&quot;_Dundee\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "693780\t331586\t1222\tPaul_Hogan\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "566405\t331586\t26\tSaltwater_crocodile\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "\t331586\t274\tother-yahoo\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "20813810\t331586\t13\tPeter_Best_(composer)\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1260945\t331586\t28\tReginald_VelJohnson\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1065264\t331586\t12\tPlaza_Hotel\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "40156059\t331586\t30\tLive_It_Up_(Mental_As_Anything_song)\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "15580374\t331586\t289\tMain_Page\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "1264623\t331586\t14\tMental_As_Anything\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "22466550\t331586\t16\tPaul_Greco\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "22918\t331586\t140\tParamount_Pictures\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "1352817\t331586\t31\tRodney_Ansell\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "\t331586\t308\tother-other\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "6873934\t331586\t11\tSteve_Irwin\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "\t331586\t417\tother-bing\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "88609\t331586\t38\tStar_Trek_IV:_The_Voyage_Home\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "4464034\t331586\t1690\tTerry_Gill\t&quot;Crocodile&quot;_Dundee\tlink\n",
+       "4148842\t331586\t17\tThe_Cowboy_Way_(film)\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "2747201\t331586\t33\tShrimp_on_the_barbie\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "885480\t331586\t20\tThe_Adventures_of_Bayou_Billy\t&quot;Crocodile&quot;_Dundee\tother\n",
+       "470006\t16250593\t24\tSue_Grafton\t&quot;D&quot;_Is_for_Deadbeat\tlink\n",
+       "16250549\t16250593\t31\t&quot;C&quot;_Is_for_Corpse\t&quot;D&quot;_Is_for_Deadbeat\tlink\n",
+       "\t16250593\t21\tother-google\t&quot;D&quot;_Is_for_Deadbeat\tother\n",
+       "2301720\t16250593\t10\tKinsey_Millhone\t&quot;D&quot;_Is_for_Deadbeat\tlink\n",
+       "\t16250593\t15\tother-empty\t&quot;D&quot;_Is_for_Deadbeat\tother\n",
+       "4619790\t\t47\tPuscifer\t&quot;D&quot;_Is_for_Dubby_–_The_Lustmord_Dub_Mixes\tredlink\n",
+       "16079543\t\t43\t&quot;V&quot;_Is_for_Viagra._The_Remixes\t&quot;D&quot;_Is_for_Dubby_–_The_Lustmord_Dub_Mixes\tredlink\n",
+       "25033979\t\t18\t&quot;C&quot;_is_for_(Please_Insert_Sophomoric_Genitalia_Reference_HERE)\t&quot;D&quot;_Is_for_Dubby_–_The_Lustmord_Dub_Mixes\tredlink\n",
+       "238341\t39304968\t44\tDavid_Hockney\t&quot;David_Hockney:_A_Bigger_Picture&quot;_in_Bilbao\tlink\n",
+       "1728819\t39304968\t17\tBrian_Sewell\t&quot;David_Hockney:_A_Bigger_Picture&quot;_in_Bilbao\tlink\n",
+       "\t39304968\t108\tother-google\t&quot;David_Hockney:_A_Bigger_Picture&quot;_in_Bilbao\tother\n",
+       "2548364\t1896643\t25\tDutch_Mantel\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1910311\t1896643\t34\tClash_of_the_Champions\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1451758\t1896643\t33\tAlexey_Ignashov\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1983348\t1896643\t15\tDan_Spivey\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1691016\t1896643\t31\tKevin_Sullivan_(wrestler)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "16409926\t1896643\t19\tLearning_the_Ropes\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1002441\t1896643\t238\tJim_Ross\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2004376\t1896643\t12\tList_of_NWA_World_Tag_Team_Champions\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "306115\t1896643\t27\tList_of_Extreme_Championship_Wrestling_alumni\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "24445746\t1896643\t20\tList_of_Legends_of_Wrestling_characters\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1441354\t1896643\t19\tJushin_Thunder_Liger\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1902117\t1896643\t24\tList_of_World_Championship_Wrestling_alumni\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "39275628\t1896643\t38\tList_of_professional_wrestlers_by_MMA_record\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "33244435\t1896643\t72\tList_of_Wrestling_Observer_Newsletter_awards\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "\t1896643\t1227\tother-google\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "\t1896643\t226\tother-wikipedia\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "307526\t1896643\t24\tRaven_(wrestler)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1871528\t1896643\t75\tMike_Polchlopek\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1235858\t1896643\t31\tRon_Simmons\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "3730230\t1896643\t46\tPowerslam\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1779766\t1896643\t21\tNikita_Koloff\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "9044129\t1896643\t10\tSalman_Hashimikov\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1854348\t1896643\t36\tMichael_Hayes_(wrestler)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "690045\t1896643\t21\tSid_Eudy\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1984531\t1896643\t30\tSkandor_Akbar\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "844984\t1896643\t23\tRing_name\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "30864960\t1896643\t46\tMike_Rotunda\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1887139\t1896643\t15\tThe_Blade_Runners\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "17599211\t1896643\t17\tStarrcade_(1987)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2143297\t1896643\t42\tTriple_Crown_Heavyweight_Championship\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1873599\t1896643\t104\tTerry_Gordy\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "472883\t1896643\t47\tUniversal_Wrestling_Federation_(Bill_Watts)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "\t1896643\t190\tother-empty\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "1848273\t1896643\t39\tVampiro\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "579700\t1896643\t245\tSteve_Williams\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "13268270\t1896643\t17\tThe_Miracle_Violence_Connection\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2100406\t1896643\t38\tThe_Bushwhackers\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2267673\t1896643\t45\tWrestling_Observer_Newsletter_Hall_of_Fame\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2001780\t1896643\t10\tCarl_Ouellet\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1889491\t1896643\t128\tDr._Death\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2748007\t1896643\t28\tBill_Watts\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "591757\t1896643\t33\tBig_Boss_Man_(wrestler)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1912776\t1896643\t12\tChi-Town_Rumble\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1027406\t1896643\t18\tBig_Van_Vader\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1690819\t1896643\t11\tBarry_Windham\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "2024278\t1896643\t17\tKenta_Kobashi\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1931006\t1896643\t44\tJohn_Laurinaitis\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "272874\t1896643\t24\tLex_Luger\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "3864676\t1896643\t10\tGary_Albright\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "30654736\t1896643\t17\tList_of_Pro_Wrestling_Illustrated_awards\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1911262\t1896643\t11\tHalloween_Havoc\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "795587\t1896643\t105\tJerry_Only\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1785504\t1896643\t16\tEd_Ferrara\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "21771811\t1896643\t51\tList_of_WWE_alumni_(S–Z)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1985456\t1896643\t12\tList_of_WCW_World_Tag_Team_Champions\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "\t1896643\t54\tother-other\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "\t1896643\t70\tother-yahoo\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "1683451\t1896643\t10\tPaul_Orndorff\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1766555\t1896643\t34\tOne_Man_Gang\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1940350\t1896643\t12\tPowerbomb\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "993933\t1896643\t17\tRikishi_(wrestler)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1286898\t1896643\t19\tMitsuharu_Misawa\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1840022\t1896643\t36\tPro_Wrestling_Illustrated\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "4167276\t1896643\t27\tSerena_Deeb\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "674611\t1896643\t18\tTazz\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "471752\t1896643\t19\tWorld_Class_Championship_Wrestling\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "\t1896643\t75\tother-bing\t&quot;Dr._Death&quot;_Steve_Williams\tother\n",
+       "2652496\t1896643\t12\tVirtual_Pro_Wrestling_2:_Ōdō_Keishō\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "882433\t1896643\t14\tTheodore_Long\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "17935523\t1896643\t17\tStarrcade_(1999)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1896801\t1896643\t35\tThe_Varsity_Club\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "3202675\t1896643\t255\tWWF_Brawl_for_All\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "1513139\t1896643\t12\tStarrcade\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "5978726\t1896643\t13\tThe_Great_American_Bash\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "3209327\t1896643\t33\tUniversal_Wrestling_Federation_(Herb_Abrams)\t&quot;Dr._Death&quot;_Steve_Williams\tlink\n",
+       "470006\t16251903\t26\tSue_Grafton\t&quot;E&quot;_Is_for_Evidence\tlink\n",
+       "\t16251903\t10\tother-wikipedia\t&quot;E&quot;_Is_for_Evidence\tother\n",
+       "\t16251903\t26\tother-google\t&quot;E&quot;_Is_for_Evidence\tother\n",
+       "16250593\t16251903\t27\t&quot;D&quot;_Is_for_Deadbeat\t&quot;E&quot;_Is_for_Evidence\tlink\n",
+       "2301720\t16251903\t10\tKinsey_Millhone\t&quot;E&quot;_Is_for_Evidence\tlink\n",
+       "39737124\t\t23\tYoon_So-hee\t&quot;EXO_Music_Video_Drama&quot;\tredlink\n",
+       "29668256\t\t24\tSeparation_(statistics)\t&quot;Firth&quot;_logistic_regression\tredlink\n",
+       "\t27653497\t12\tother-empty\t&quot;Five_stars_rise_in_the_East&quot;_arm_protector\tother\n",
+       "\t27653497\t32\tother-wikipedia\t&quot;Five_stars_rise_in_the_East&quot;_arm_protector\tother\n",
+       "33109636\t27653497\t17\tList_of_Chinese_cultural_relics_forbidden_to_be_exhibited_abroad\t&quot;Five_stars_rise_in_the_East&quot;_arm_protector\tother\n",
+       "3855385\t44783572\t10\tAlbanian_Subversion\t&quot;Free_Albania&quot;_National_Committee\tlink\n",
+       "1733948\t44783572\t12\tMidhat_Frashëri\t&quot;Free_Albania&quot;_National_Committee\tlink\n",
+       "\t44783572\t13\tother-google\t&quot;Free_Albania&quot;_National_Committee\tother\n",
+       "1696824\t\t20\tKirkwood,_Atlanta\t&quot;Future_(rapper)&quot;_on_@Wikipedia:_https://en.wikipedia.org/wiki/Future_(rapper)\tredlink\n",
+       "\t37732991\t14\tother-google\t&quot;Good_Day,_Fellow!&quot;_&quot;Axe_Handle!&quot;\tother\n",
+       "\t37732991\t16\tother-wikipedia\t&quot;Good_Day,_Fellow!&quot;_&quot;Axe_Handle!&quot;\tother\n",
+       "\t8617839\t15\tother-wikipedia\t&quot;Good_Luck,_Father_Ted&quot;\tother\n",
+       "\t8617839\t64\tother-google\t&quot;Good_Luck,_Father_Ted&quot;\tother\n",
+       "26941571\t8617839\t16\tList_of_Father_Ted_characters\t&quot;Good_Luck,_Father_Ted&quot;\tlink\n",
+       "11313\t8617839\t10\tFather_Ted\t&quot;Good_Luck,_Father_Ted&quot;\tlink\n",
+       "6734598\t8617839\t94\tList_of_Father_Ted_episodes\t&quot;Good_Luck,_Father_Ted&quot;\tlink\n",
+       "8618299\t8617839\t13\tEntertaining_Father_Stone\t&quot;Good_Luck,_Father_Ted&quot;\tlink\n",
+       "\t8617839\t18\tother-empty\t&quot;Good_Luck,_Father_Ted&quot;\tother\n",
+       "16203597\t16204072\t23\t&quot;G&quot;_Is_for_Gumshoe\t&quot;H&quot;_Is_for_Homicide\tlink\n",
+       "\t16204072\t24\tother-google\t&quot;H&quot;_Is_for_Homicide\tother\n",
+       "2301720\t16204072\t11\tKinsey_Millhone\t&quot;H&quot;_Is_for_Homicide\tlink\n",
+       "470006\t16204072\t26\tSue_Grafton\t&quot;H&quot;_Is_for_Homicide\tlink\n",
+       "38164596\t1261557\t13\tWhere_Are_We_Now?\t&quot;Heroes&quot;\tlink\n",
+       "\t1261557\t38\tother-bing\t&quot;Heroes&quot;\tother\n",
+       "1261548\t1261557\t59\tStation_to_Station\t&quot;Heroes&quot;\tlink\n",
+       "809108\t1261557\t61\tThe_Thin_White_Duke\t&quot;Heroes&quot;\tlink\n",
+       "3041018\t1261557\t395\tStage_(David_Bowie_album)\t&quot;Heroes&quot;\tlink\n",
+       "77767\t1261557\t23\tThe_Rise_and_Fall_of_Ziggy_Stardust_and_the_Spiders_from_Mars\t&quot;Heroes&quot;\tlink\n",
+       "4231979\t1261557\t29\tV-2_Schneider\t&quot;Heroes&quot;\tlink\n",
+       "1261545\t1261557\t17\tYoung_Americans_(album)\t&quot;Heroes&quot;\tlink\n",
+       "1448584\t1261557\t14\tSymphony_No._1_(Glass)\t&quot;Heroes&quot;\tlink\n",
+       "\t1261557\t30\tother-other\t&quot;Heroes&quot;\tother\n",
+       "954203\t1261557\t11\tNeu!_'75\t&quot;Heroes&quot;\tlink\n",
+       "24540\t1261557\t10\tPhilip_Glass\t&quot;Heroes&quot;\tlink\n",
+       "15580374\t1261557\t40\tMain_Page\t&quot;Heroes&quot;\tother\n",
+       "4232032\t1261557\t16\tSense_of_Doubt\t&quot;Heroes&quot;\tlink\n",
+       "286992\t1261557\t12\tOblique_Strategies\t&quot;Heroes&quot;\tlink\n",
+       "1448572\t1261557\t2625\tLow_(David_Bowie_album)\t&quot;Heroes&quot;\tlink\n",
+       "21222062\t1261557\t17\tBrian_Eno\t&quot;Heroes&quot;\tlink\n",
+       "8786\t1261557\t2302\tDavid_Bowie\t&quot;Heroes&quot;\tlink\n",
+       "331174\t1261557\t1076\tDavid_Bowie_discography\t&quot;Heroes&quot;\tlink\n",
+       "195834\t1261557\t18\tAladdin_Sane\t&quot;Heroes&quot;\tlink\n",
+       "3371542\t1261557\t30\tBeauty_and_the_Beast_(David_Bowie_song)\t&quot;Heroes&quot;\tlink\n",
+       "2371832\t1261557\t16\tCarlos_Alomar\t&quot;Heroes&quot;\tlink\n",
+       "2242811\t1261557\t10\tBest_of_Bowie\t&quot;Heroes&quot;\tlink\n",
+       "3239642\t1261557\t748\t&quot;Heroes&quot;_(David_Bowie_song)\t&quot;Heroes&quot;\tlink\n",
+       "2717533\t1261557\t17\tJoe_the_Lion\t&quot;Heroes&quot;\tlink\n",
+       "10631715\t1261557\t12\tFripp_&amp;_Eno\t&quot;Heroes&quot;\tlink\n",
+       "12439517\t1261557\t13\tHansa_Tonstudio\t&quot;Heroes&quot;\tlink\n",
+       "735563\t1261557\t11\tFlorian_Schneider\t&quot;Heroes&quot;\tlink\n",
+       "\t1261557\t1904\tother-google\t&quot;Heroes&quot;\tother\n",
+       "\t1261557\t423\tother-wikipedia\t&quot;Heroes&quot;\tother\n",
+       "\t1261557\t13\tother-twitter\t&quot;Heroes&quot;\tother\n",
+       "525018\t1261557\t15\tHunky_Dory\t&quot;Heroes&quot;\tlink\n",
+       "1261524\t1261557\t10\tLet's_Dance_(David_Bowie_album)\t&quot;Heroes&quot;\tlink\n",
+       "11327948\t1261557\t482\tHeroes\t&quot;Heroes&quot;\tother\n",
+       "1261561\t1261557\t88\tLodger_(album)\t&quot;Heroes&quot;\tlink\n",
+       "4231891\t1261557\t17\tBlackout_(David_Bowie_song)\t&quot;Heroes&quot;\tlink\n",
+       "160783\t1261557\t25\t1977_in_music\t&quot;Heroes&quot;\tlink\n",
+       "1055167\t1261557\t10\tDiamond_Dogs\t&quot;Heroes&quot;\tlink\n",
+       "700842\t1261557\t11\tDavid_Bowie_(1969_album)\t&quot;Heroes&quot;\tlink\n",
+       "\t1261557\t33\tother-yahoo\t&quot;Heroes&quot;\tother\n",
+       "\t1261557\t410\tother-empty\t&quot;Heroes&quot;\tother\n",
+       "38164057\t1261557\t150\tThe_Next_Day\t&quot;Heroes&quot;\tlink\n",
+       "751761\t1261557\t26\tTony_Visconti\t&quot;Heroes&quot;\tlink\n",
+       "1448522\t1261557\t35\tSymphony_No._4_(Glass)\t&quot;Heroes&quot;\tlink\n",
+       "1260011\t1261557\t27\tThe_Idiot_(album)\t&quot;Heroes&quot;\tlink\n",
+       "4232134\t1261557\t21\tThe_Secret_Life_of_Arabia\t&quot;Heroes&quot;\tlink\n",
+       "207103\t1261557\t10\tVince_Clarke\t&quot;Heroes&quot;\tlink\n",
+       "1261535\t1261557\t11\tThe_Man_Who_Sold_the_World_(album)\t&quot;Heroes&quot;\tlink\n",
+       "35060284\t1261557\t31\tRobert_Fripp_discography\t&quot;Heroes&quot;\tlink\n",
+       "25893\t1261557\t143\tRobert_Fripp\t&quot;Heroes&quot;\tlink\n",
+       "4232070\t1261557\t12\tNeuköln\t&quot;Heroes&quot;\tlink\n",
+       "923669\t1261557\t26\tLust_for_Life_(album)\t&quot;Heroes&quot;\tlink\n",
+       "4232056\t1261557\t14\tMoss_Garden\t&quot;Heroes&quot;\tlink\n",
+       "1261565\t1261557\t51\tScary_Monsters_(And_Super_Creeps)\t&quot;Heroes&quot;\tlink\n",
+       "30871303\t3564374\t65\tI_Am_that_I_Am\t&quot;I_AM&quot;_Activity\tlink\n",
+       "704528\t3564374\t27\tElizabeth_Clare_Prophet\t&quot;I_AM&quot;_Activity\tother\n",
+       "23085408\t3564374\t76\tLegends_of_Mount_Shasta\t&quot;I_AM&quot;_Activity\tlink\n",
+       "1172131\t3564374\t47\tList_of_founders_of_religious_traditions\t&quot;I_AM&quot;_Activity\tlink\n",
+       "13251936\t3564374\t37\tAscended_Master_Teachings\t&quot;I_AM&quot;_Activity\tother\n",
+       "425823\t3564374\t16\tAlice_Bailey\t&quot;I_AM&quot;_Activity\tother\n",
+       "1130388\t3564374\t18\tRobert_LeFevre\t&quot;I_AM&quot;_Activity\tlink\n",
+       "31597516\t3564374\t21\tSt._Germain_(Theosophy)\t&quot;I_AM&quot;_Activity\tlink\n",
+       "21742\t3564374\t17\tNew_Age\t&quot;I_AM&quot;_Activity\tlink\n",
+       "\t3564374\t369\tother-empty\t&quot;I_AM&quot;_Activity\tother\n",
+       "2399670\t3564374\t10\tThe_Aquarian_Gospel_of_Jesus_the_Christ\t&quot;I_AM&quot;_Activity\tother\n",
+       "2880213\t3564374\t18\tUnited_States_v._Ballard\t&quot;I_AM&quot;_Activity\tlink\n",
+       "200264\t3564374\t85\tTheosophical_Society\t&quot;I_AM&quot;_Activity\tlink\n",
+       "5501897\t3564374\t11\tSeven_rays\t&quot;I_AM&quot;_Activity\tother\n",
+       "833097\t3564374\t18\tWilliam_Dudley_Pelley\t&quot;I_AM&quot;_Activity\tlink\n",
+       "31480\t3564374\t41\tTheosophy\t&quot;I_AM&quot;_Activity\tlink\n",
+       "\t3564374\t60\tother-bing\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t118\tother-other\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t33\tother-facebook\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t43\tother-yahoo\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t51\tother-wikipedia\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t640\tother-google\t&quot;I_AM&quot;_Activity\tother\n",
+       "\t3564374\t24\tother-twitter\t&quot;I_AM&quot;_Activity\tother\n",
+       "609606\t3564374\t42\tChurch_Universal_and_Triumphant\t&quot;I_AM&quot;_Activity\tlink\n",
+       "3207665\t3564374\t14\tA_Dweller_on_Two_Planets\t&quot;I_AM&quot;_Activity\tlink\n",
+       "804126\t3564374\t52\tAscended_master\t&quot;I_AM&quot;_Activity\tlink\n",
+       "914523\t3564374\t100\tGuy_Ballard\t&quot;I_AM&quot;_Activity\tlink\n",
+       "1426548\t3564374\t20\tI_Am\t&quot;I_AM&quot;_Activity\tlink\n",
+       "14703837\t3564374\t38\tGreat_White_Brotherhood\t&quot;I_AM&quot;_Activity\tlink\n",
+       "2399768\t3564374\t42\tList_of_new_religious_movements\t&quot;I_AM&quot;_Activity\tother\n",
+       "24146787\t3564374\t40\tList_of_UFO_religions\t&quot;I_AM&quot;_Activity\tlink\n",
+       "42247669\t17495549\t30\tJust_Around_the_Riverbend\t&quot;I_Want&quot;_song\tother\n",
+       "41895775\t17495549\t23\tFor_the_First_Time_in_Forever\t&quot;I_Want&quot;_song\tlink\n",
+       "6131602\t17495549\t38\tGo_the_Distance\t&quot;I_Want&quot;_song\tother\n",
+       "\t17495549\t36\tother-empty\t&quot;I_Want&quot;_song\tother\n",
+       "42850941\t17495549\t38\tWhen_Will_My_Life_Begin?\t&quot;I_Want&quot;_song\tlink\n",
+       "10090698\t17495549\t30\tPart_of_Your_World\t&quot;I_Want&quot;_song\tlink\n",
+       "\t17495549\t135\tother-google\t&quot;I_Want&quot;_song\tother\n",
+       "\t17495549\t23\tother-other\t&quot;I_Want&quot;_song\tother\n",
+       "22825519\t23158690\t11\tAnca_Petrescu\t&quot;Ion_Mincu&quot;_University_of_Architecture_and_Urbanism\tother\n",
+       "1249478\t23158690\t24\tList_of_universities_in_Romania\t&quot;Ion_Mincu&quot;_University_of_Architecture_and_Urbanism\tother\n",
+       "\t23158690\t60\tother-google\t&quot;Ion_Mincu&quot;_University_of_Architecture_and_Urbanism\tother\n",
+       "\t23158690\t22\tother-empty\t&quot;Ion_Mincu&quot;_University_of_Architecture_and_Urbanism\tother\n",
+       "\t16252208\t11\tother-empty\t&quot;J&quot;_Is_for_Judgment\tother\n",
+       "470006\t16252208\t17\tSue_Grafton\t&quot;J&quot;_Is_for_Judgment\tlink\n",
+       "\t16252208\t20\tother-google\t&quot;J&quot;_Is_for_Judgment\tother\n",
+       "16252078\t16252208\t25\t&quot;I&quot;_Is_for_Innocent\t&quot;J&quot;_Is_for_Judgment\tlink\n",
+       "1960430\t44810634\t12\tFear_of_Pop:_Volume_1\t&quot;Just_Your_Average_Second_On_This_Planet&quot;_1997-1998\tlink\n",
+       "\t44810634\t10\tother-empty\t&quot;Just_Your_Average_Second_On_This_Planet&quot;_1997-1998\tother\n",
+       "\t16252523\t16\tother-empty\t&quot;K&quot;_Is_for_Killer\tother\n",
+       "16252208\t16252523\t24\t&quot;J&quot;_Is_for_Judgment\t&quot;K&quot;_Is_for_Killer\tlink\n",
+       "\t16252523\t35\tother-google\t&quot;K&quot;_Is_for_Killer\tother\n",
+       "\t16252523\t16\tother-wikipedia\t&quot;K&quot;_Is_for_Killer\tother\n",
+       "470006\t16252523\t28\tSue_Grafton\t&quot;K&quot;_Is_for_Killer\tlink\n",
+       "\t487976\t12\tother-empty\t&quot;King&quot;_Bennie_Nawahi\tother\n",
+       "\t487976\t10\tother-other\t&quot;King&quot;_Bennie_Nawahi\tother\n",
+       "\t487976\t11\tother-wikipedia\t&quot;King&quot;_Bennie_Nawahi\tother\n",
+       "\t487976\t36\tother-google\t&quot;King&quot;_Bennie_Nawahi\tother\n",
+       "2110406\t\t10\tPretty_Ricky\t&quot;Knockin'_Boots\tredlink\n",
+       "\t38499517\t68\tother-empty\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "\t38499517\t215\tother-google\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "\t38499517\t70\tother-wikipedia\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "242476\t38499517\t50\tJack_Straw\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tlink\n",
+       "\t38499517\t15\tother-other\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "11015252\t38499517\t11\tVladimir_Lenin\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tlink\n",
+       "420150\t38499517\t12\tThe_State_and_Revolution\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tlink\n",
+       "2075551\t38499517\t14\tUltra-leftism\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "302252\t38499517\t20\tCouncil_communism\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tlink\n",
+       "40362480\t38499517\t13\tCommunist_Party_of_Great_Britain\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tother\n",
+       "39722572\t38499517\t19\tLeft_communism\t&quot;Left-Wing&quot;_Communism:_An_Infantile_Disorder\tlink\n",
+       "\t28480474\t18\tother-google\t&quot;M&quot;_Circle\tother\n",
+       "\t16252603\t11\tother-empty\t&quot;M&quot;_Is_for_Malice\tother\n",
+       "\t16252603\t53\tother-google\t&quot;M&quot;_Is_for_Malice\tother\n",
+       "2301720\t16252603\t11\tKinsey_Millhone\t&quot;M&quot;_Is_for_Malice\tlink\n",
+       "470006\t16252603\t32\tSue_Grafton\t&quot;M&quot;_Is_for_Malice\tlink\n",
+       "\t16252603\t12\tother-other\t&quot;M&quot;_Is_for_Malice\tother\n",
+       "16252578\t16252603\t23\t&quot;L&quot;_Is_for_Lawless\t&quot;M&quot;_Is_for_Malice\tlink\n",
+       "\t36758937\t15\tother-empty\t&quot;Major&quot;_John_Buchanan\tother\n",
+       "\t36758937\t17\tother-wikipedia\t&quot;Major&quot;_John_Buchanan\tother\n",
+       "\t36758937\t53\tother-google\t&quot;Major&quot;_John_Buchanan\tother\n",
+       "21163352\t563697\t10\tMaster_Harold...and_the_Boys_(2010_film)\t&quot;Master_Harold&quot;...and_the_Boys\tlink\n",
+       "7028414\t563697\t101\tEddie_Redmayne\t&quot;Master_Harold&quot;...and_the_Boys\tlink\n",
+       "\t563697\t36\tother-wikipedia\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "\t563697\t170\tother-empty\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "\t563697\t1967\tother-google\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "\t563697\t38\tother-other\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "3747865\t563697\t32\tMaster_Harold_and_the_Boys\t&quot;Master_Harold&quot;...and_the_Boys\tlink\n",
+       "\t563697\t92\tother-bing\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "692334\t563697\t165\tAthol_Fugard\t&quot;Master_Harold&quot;...and_the_Boys\tlink\n",
+       "\t563697\t78\tother-yahoo\t&quot;Master_Harold&quot;...and_the_Boys\tother\n",
+       "3419979\t\t20\tWoodlouse_spider\t&quot;Mothercare&quot;_spider\tredlink\n",
+       "\t16252712\t14\tother-empty\t&quot;N&quot;_Is_for_Noose\tother\n",
+       "470006\t16252712\t22\tSue_Grafton\t&quot;N&quot;_Is_for_Noose\tlink\n",
+       "\t16252712\t27\tother-google\t&quot;N&quot;_Is_for_Noose\tother\n",
+       "16252603\t16252712\t28\t&quot;M&quot;_Is_for_Malice\t&quot;N&quot;_Is_for_Noose\tlink\n",
+       "2301720\t16252712\t11\tKinsey_Millhone\t&quot;N&quot;_Is_for_Noose\tlink\n",
+       "\t5400322\t31\tother-empty\t&quot;No_Flashlight&quot;:_Songs_of_the_Fulfilled_Night\tother\n",
+       "\n",
+       "*** WARNING: skipped 15616 bytes of output ***\n",
+       "\n",
+       "44076048\t18938265\t241\tSuper_Bowl_XLIX_halftime_show\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "\t18938265\t1369\tother-other\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "\t18938265\t33\tother-facebook\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "681786\t18938265\t94\tBad_Hair_Day\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "693809\t18938265\t15\tChop_Suey!_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1779981\t18938265\t16\tChamillionaire\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "26534206\t18938265\t11\tComedy_Bang!_Bang!\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3380816\t18938265\t11\tDown_with_the_Sickness\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "36682042\t18938265\t213\tDollmaker_(comics)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "143435\t18938265\t20\tBand_Aid_(band)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "157548\t18938265\t31\tAllan_Sherman\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "107622\t18938265\t27\tDowney,_California\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2320524\t18938265\t37\tBlack_or_White\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "19375754\t18938265\t10\tCraigslist\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "16046327\t18938265\t242\tDC_Universe_Animated_Original_Movies\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11560543\t18938265\t37\tComedy_music\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "495591\t18938265\t25\tCola_Wars\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "149681\t18938265\t13\tBeck\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "2102759\t18938265\t29\tAnother_One_Rides_the_Bus\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1856564\t18938265\t40\tComedy_rock\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2258507\t18938265\t39\tAlbuquerque_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "539377\t18938265\t10\tAnimal_Man\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "8133962\t18938265\t10\tBack_at_the_Barnyard\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "31561319\t18938265\t130\tAlpocalypse\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "59610\t18938265\t105\tAtlantic_Records\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "39384064\t18938265\t965\t57th_Annual_Grammy_Awards\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11700181\t18938265\t13\tClose_but_No_Cigar\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3456183\t18938265\t12\tChristmas_at_Ground_Zero\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "39949337\t18938265\t24\tDrunk_History\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10294516\t18938265\t17\t&quot;Weird_Al&quot;_Yankovic_videography\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "5828575\t18938265\t21\tCouch_Potato_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "680375\t18938265\t10\tBill_Plympton\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681837\t18938265\t160\t&quot;Weird_Al&quot;_Yankovic_in_3-D\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "33246249\t18938265\t13\t&quot;Weird_Al&quot;_Yankovic_Live!:_The_Alpocalypse_Tour\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681846\t18938265\t284\t&quot;Weird_Al&quot;_Yankovic_(album)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "31218217\t18938265\t25\tComedy_hip_hop\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3913016\t18938265\t26\t&quot;Weird_Al&quot;_Yankovic's_Greatest_Hits\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "231982\t18938265\t242\tDr._Demento\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "51278\t18938265\t21\tAlbuquerque,_New_Mexico\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "440017\t18938265\t48\tAisha_Tyler\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "168263\t18938265\t26\tCoolio\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1745307\t18938265\t26\tCledus_T._Judd\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "41156988\t18938265\t52\tDoge_(meme)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "7260565\t18938265\t26\tCanadian_Idiot\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4082868\t18938265\t33\tDare_to_Be_Stupid_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "286323\t18938265\t11\tCrash_Test_Dummies\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11871605\t18938265\t10\tCherry_Pie_(Warrant_song)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "239034\t18938265\t20\tDweezil_Zappa\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "726651\t18938265\t18\tDonny_Osmond\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "33629854\t18938265\t13\tDC_Nation_Shorts\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "5779338\t18938265\t13\tClosing_Time_(Semisonic_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43318058\t18938265\t11\tClaudia_O'Doherty\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10672\t18938265\t56\tFrank_Zappa\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1439800\t18938265\t82\tEye_of_the_Tiger\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "428865\t18938265\t10\tIronic_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "23919750\t18938265\t11\tFireflies_(Owl_City_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2125672\t18938265\t11\tGhetto_Supastar_(That_Is_What_You_Are)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "9181653\t18938265\t13\tList_of_How_I_Met_Your_Mother_characters\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "197889\t18938265\t17\tFelix_the_Cat\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11901898\t18938265\t12\tHere's_Johnny\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10151970\t18938265\t12\tHip_to_Be_Square\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "343560\t18938265\t19\tJack_Black\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2683218\t18938265\t15\tList_of_Lilo_&amp;_Stitch:_The_Series_episodes\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11311126\t18938265\t35\tIt's_All_About_the_Pentiums\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "7297505\t18938265\t25\tKristen_Schaal\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "4072138\t18938265\t52\tLike_a_Surgeon_(&quot;Weird_Al&quot;_Yankovic_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "7419707\t18938265\t24\tJohn_Morrison_(wrestler)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1178120\t18938265\t24\tHeadline_News_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "41170737\t18938265\t37\tHappy_(Pharrell_Williams_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "639642\t18938265\t13\tI'll_Be_There_for_You_(The_Rembrandts_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "20593859\t18938265\t15\tJizz_in_My_Pants\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1053554\t18938265\t94\tGangsta's_Paradise\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "12798266\t18938265\t182\tList_of_&quot;Weird_Al&quot;_Yankovic_polka_medleys\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4012959\t18938265\t12\tI_Can't_Dance\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "9903893\t18938265\t12\tList_of_Italian-American_entertainers\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43368354\t18938265\t33\tHandy_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "5888557\t18938265\t10\tFootloose_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4429395\t18938265\t57\tEminem\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43727\t18938265\t144\tFrankie_Yankovic\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681823\t18938265\t101\tEven_Worse\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2706860\t18938265\t11\tGot_My_Mind_Set_on_You\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3955585\t18938265\t12\tJanie's_Got_a_Gun\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "27748226\t18938265\t11\tJeopardy!\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "238443\t18938265\t11\tLiam_Lynch_(musician)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "40095940\t18938265\t16\tList_of_2014_albums\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "8473867\t18938265\t10\tList_of_30_Rock_characters\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "3815781\t18938265\t42\tKeegan-Michael_Key\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "158879\t18938265\t60\tGeorge_Carlin\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "912417\t18938265\t10\tGrammy_Award_for_Best_Concept_Music_Video\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "487070\t18938265\t14\tEmo_Philips\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "738015\t18938265\t27\tJohnny_Bravo\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11224587\t18938265\t31\tI_Lost_on_Jeopardy\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3671687\t18938265\t10\tLeibniz–Newton_calculus_controversy\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10340709\t18938265\t13\tList_of_RCA_Records_artists\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "21207345\t18938265\t17\tJerry_Springer\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "41629180\t18938265\t87\tGame_Grumps\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "8376816\t18938265\t12\tElectric_Avenue_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "155452\t18938265\t16\tHey_Jude\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43377300\t18938265\t31\tFoil_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "9030340\t18938265\t38\tList_of_Cal_Poly_at_San_Luis_Obispo_alumni\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3795017\t18938265\t84\tLiberian_Girl\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "9410052\t18938265\t17\tList_of_polka_artists\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "20706022\t18938265\t10\tList_of_Volcano_Entertainment_artists\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2018105\t18938265\t140\tList_of_songs_recorded_by_&quot;Weird_Al&quot;_Yankovic\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "703188\t18938265\t70\tList_of_vegans\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "640911\t18938265\t29\tList_of_satirists_and_satires\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "873835\t18938265\t19\tAl_TV\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681811\t18938265\t53\tAlapalooza\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "156683\t18938265\t23\tDon_Pardo\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "34290593\t18938265\t31\tCall_Me_Maybe\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4161738\t18938265\t11\t&quot;Weird_Al&quot;_Yankovic_Live!\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "18938265\t18938265\t38\t&quot;Weird_Al&quot;_Yankovic\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "2661948\t18938265\t54\tAuto-Tune\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "998258\t18938265\t180\tAmish_Paradise\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "7630017\t18938265\t140\t&quot;Weird_Al&quot;_Yankovic_discography\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "45137822\t18938265\t469\tBatman_vs._Robin\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11424214\t18938265\t43\tEBay_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "15957378\t18938265\t844\tAaron_Paul\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "739408\t18938265\t102\tEat_It\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "41953\t18938265\t75\tBohemian_Rhapsody\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "432147\t18938265\t10\tCharles_Nelson_Reilly\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "18527630\t18938265\t16\tEat_It_(&quot;Weird_Al&quot;_Yankovic_album)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3716049\t18938265\t29\tAddicted_to_Love_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "154247\t18938265\t11\tEddie_Vedder\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "16757649\t18938265\t22\tBatman:_The_Brave_and_the_Bold\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681830\t18938265\t87\tDare_to_Be_Stupid\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "6600777\t18938265\t29\tDon't_Download_This_Song\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "51744\t18938265\t86\tAmerican_Pie_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "663903\t18938265\t16\tBehind_the_Music\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "209416\t18938265\t44\tBen_Folds\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "11748645\t18938265\t17\tAnother_One_Rides_the_Bus_(EP)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3281387\t18938265\t11\tBedrock_Anthem\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "17080248\t18938265\t51\tBeat_It\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "39026706\t18938265\t11\tBlurred_Lines\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "23138118\t18938265\t23\tCraigslist_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1782176\t18938265\t14\tBad_(Michael_Jackson_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "433230\t18938265\t29\tCalifornia_Polytechnic_State_University\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "1263456\t18938265\t40\tApologetiX\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1162\t18938265\t33\tAccordion\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "16173682\t18938265\t14\tList_of_keytarists\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4807288\t18938265\t16\tList_of_backmasked_messages\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "5747670\t18938265\t58\tLive_and_Let_Die_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "6041\t18938265\t10\tList_of_comedians\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "25011929\t18938265\t10\tJohn_and_Lorena_Bobbitt\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "31526507\t18938265\t31\tHow_I_Met_Your_Mother_(season_7)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "42746880\t18938265\t431\tGalavant\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1503921\t18938265\t19\tHidden_track\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "12089889\t18938265\t31\tEric_Stonestreet\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4094664\t18938265\t11\tLasagna_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4169218\t18938265\t11\tHaunted_Lighthouse\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4109863\t18938265\t13\tGump_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4070828\t18938265\t17\tI_Love_Rocky_Road\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2739735\t18938265\t10\tI_Touch_Myself\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1847150\t18938265\t18\tIce_Ice_Baby\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "44786839\t18938265\t31\tList_of_The_Late_Late_Show_episodes_(2015_guest_hosts)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "3615165\t18938265\t18\tI_Want_It_That_Way\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3785221\t18938265\t26\tJim_West_(guitarist)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1928807\t18938265\t12\tFanny_pack\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "33592458\t18938265\t213\tEpic_Rap_Battles_of_History\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "185416\t18938265\t220\tGrammy_Award_for_Best_Comedy_Album\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "15022585\t18938265\t12\tJames_Blunt\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "43552374\t18938265\t26\tIce_Bucket_Challenge\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10417152\t18938265\t13\tI_Want_a_New_Drug\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "30821628\t18938265\t16\tList_of_My_Little_Pony:_Friendship_Is_Magic_episodes\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43350433\t18938265\t25\tLame_Claim_to_Fame\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "35191643\t18938265\t27\tKidnapped_by_Danger\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "32291112\t18938265\t45\tList_of_My_Little_Pony:_Friendship_Is_Magic_characters\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "5458198\t18938265\t14\tJudy_Tenuta\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "85307\t18938265\t25\tHuey_Lewis_and_the_News\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2157741\t18938265\t35\tJon_Schwartz_(drummer)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "210836\t18938265\t13\tFalco_(musician)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "13101139\t18938265\t11\tHere's_Johnny_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4196662\t18938265\t27\tJordan_Peele\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "625478\t18938265\t22\tGilbert_Gottfried\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "21604923\t18938265\t15\tIsaac_Newton_in_popular_culture\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "359520\t18938265\t43\tJoan_Jett\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4109668\t18938265\t21\tJurassic_Park_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "23138134\t18938265\t15\tInternet_Leaks\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "44955052\t18938265\t14\tList_of_Epic_Rap_Battles_of_History_episodes\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1601775\t18938265\t10\tLet's_Get_It_Started\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "462389\t18938265\t19\tList_of_The_Simpsons_guest_stars\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "28271869\t18938265\t10\tHurley_(album)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "1742323\t18938265\t114\tFat_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "\t18938265\t5129\tother-empty\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "32851\t18938265\t23\tWiki\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "228355\t18938265\t95\tThe_Naked_Gun:_From_the_Files_of_Police_Squad!\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "6932227\t18938265\t11\tThe_Saga_Begins_(album)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "10128701\t18938265\t14\tThe_Biggest_Ball_of_Twine_in_Minnesota\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "7198320\t18938265\t24\tWeasel_Stomping_Day\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2026444\t18938265\t44\tThe_Safety_Dance\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "19653364\t18938265\t11\tWhatever_You_Like_(&quot;Weird_Al&quot;_Yankovic_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "41684727\t18938265\t10\tWhiplash_(2014_film)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "5419140\t18938265\t91\tThe_Naked_Gun\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "40688399\t18938265\t10\tTimber_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1584368\t18938265\t65\tYankovic\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3732122\t18938265\t15\tSteve_Jay\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "890630\t18938265\t80\tVanna_White\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43630148\t18938265\t21\tWallykazam!\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681822\t18938265\t27\tUHF_–_Original_Motion_Picture_Soundtrack_and_Other_Stuff\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3070376\t18938265\t16\tThe_Food_Album\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4584644\t18938265\t34\tYoda_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "8567806\t18938265\t23\tWordGirl\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "43309524\t18938265\t92\tWord_Crimes\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "87474\t18938265\t13\tTony_Hawk\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1969519\t18938265\t24\tU_Can't_Touch_This\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "37656763\t18938265\t32\tThrift_Shop\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "18784650\t18938265\t832\tSuper_Bowl_XLIX\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "4109439\t18938265\t21\tYou_Don't_Love_Me_Anymore_(&quot;Weird_Al&quot;_Yankovic_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1867173\t18938265\t57\tNaked_Gun_33⅓:_The_Final_Insult\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "22572\t18938265\t10\tOctober_23\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "382199\t18938265\t14\tRay_Manzarek\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "6967012\t18938265\t11\tSeth_Green\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "23811071\t18938265\t24\tParty_in_the_U.S.A.\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1273502\t18938265\t118\tLoser_(Beck_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "262457\t18938265\t16\tR._Lee_Ermey\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "26678\t18938265\t11\tStar_Wars\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "611396\t18938265\t39\tRick_Derringer\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "37287\t18938265\t12\tScooby-Doo\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "194036\t18938265\t11\tSpike_Jones\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "57317\t18938265\t11\tPrince_(musician)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "2043990\t18938265\t102\tSpy_Hard\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "12694177\t18938265\t84\tLynwood_High_School\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681814\t18938265\t54\tOff_the_Deep_End\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "21073\t18938265\t14\tMad_(magazine)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "3434143\t18938265\t18\tRichard_Stallman\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "89662\t18938265\t20\tMargaret_Cho\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1417851\t18938265\t11\tOne_Week_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "39762022\t18938265\t18\tMy_Little_Pony:_Friendship_Is_Magic_(season_4)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "573460\t18938265\t12\tSpace_Ghost_Coast_to_Coast\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2246914\t18938265\t14\tRay_of_Light_(song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "25140047\t18938265\t29\tNOH8_Campaign\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "1955961\t18938265\t85\tSmells_Like_Nirvana\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "371187\t18938265\t13\tNational_Enquirer\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "36809740\t18938265\t14\tRadioactive_(Imagine_Dragons_song)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "681810\t18938265\t99\tRunning_with_Scissors_(&quot;Weird_Al&quot;_Yankovic_album)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1490639\t18938265\t20\tPokémon:_The_Movie_2000\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "4109077\t18938265\t14\tMoney_for_Nothing/Beverly_Hillbillies*\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "28214451\t18938265\t15\tMad_(TV_series)\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1700806\t18938265\t14\tOne_of_Us_(Joan_Osborne_song)\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "31552317\t18938265\t39\tPerform_This_Way\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "104998\t18938265\t27\tMichael_Richards\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "1527386\t18938265\t31\tRobot_Chicken\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "2300912\t18938265\t19\tParty_All_the_Time\t&quot;Weird_Al&quot;_Yankovic\tlink\n",
+       "\t18938265\t1553\tother-yahoo\t&quot;Weird_Al&quot;_Yankovic\tother\n",
+       "7630017\t4161738\t12\t&quot;Weird_Al&quot;_Yankovic_discography\t&quot;Weird_Al&quot;_Yankovic_Live!\tlink\n",
+       "\t4161738\t10\tother-wikipedia\t&quot;Weird_Al&quot;_Yankovic_Live!\tother\n",
+       "\t4161738\t26\tother-google\t&quot;Weird_Al&quot;_Yankovic_Live!\tother\n",
+       "33246249\t4161738\t10\t&quot;Weird_Al&quot;_Yankovic_Live!:_The_Alpocalypse_Tour\t&quot;Weird_Al&quot;_Yankovic_Live!\tlink\n",
+       "\t4161738\t11\tother-empty\t&quot;Weird_Al&quot;_Yankovic_Live!\tother\n",
+       "\t7630017\t532\tother-empty\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "1955961\t7630017\t27\tSmells_Like_Nirvana\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "31552317\t7630017\t15\tPerform_This_Way\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "739408\t7630017\t25\tEat_It\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "4649999\t7630017\t21\t911_(Wyclef_Jean_song)\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "18938265\t7630017\t1871\t&quot;Weird_Al&quot;_Yankovic\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "998258\t7630017\t30\tAmish_Paradise\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "6600777\t7630017\t11\tDon't_Download_This_Song\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "1742323\t7630017\t17\tFat_(song)\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "43350433\t7630017\t10\tLame_Claim_to_Fame\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "43039420\t7630017\t11\tEverything_Will_Be_Alright_in_the_End\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "\t7630017\t167\tother-yahoo\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "\t7630017\t21\tother-other\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "4070747\t7630017\t13\tRicky_(song)\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "43070100\t7630017\t33\tMandatory_Fun\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "15580374\t7630017\t189\tMain_Page\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "6075882\t7630017\t36\tWhite_&amp;_Nerdy\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "\t7630017\t84\tother-bing\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "2018105\t7630017\t52\tList_of_songs_recorded_by_&quot;Weird_Al&quot;_Yankovic\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "11311126\t7630017\t10\tIt's_All_About_the_Pentiums\t&quot;Weird_Al&quot;_Yankovic_discography\tlink\n",
+       "\t7630017\t67\tother-twitter\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "\t7630017\t1478\tother-google\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "\t7630017\t137\tother-wikipedia\t&quot;Weird_Al&quot;_Yankovic_discography\tother\n",
+       "\t43882355\t21\tother-wikipedia\t&quot;What_Is_This_Heart?&quot;\tother\n",
+       "\t43882355\t132\tother-google\t&quot;What_Is_This_Heart?&quot;\tother\n",
+       "\t43882355\t56\tother-empty\t&quot;What_Is_This_Heart?&quot;\tother\n",
+       "29054561\t43882355\t1025\tHow_to_Dress_Well\t&quot;What_Is_This_Heart?&quot;\tlink\n",
+       "33658579\t43882355\t12\tList_of_albums_awarded_Pitchfork_Best_New_Album\t&quot;What_Is_This_Heart?&quot;\tother\n",
+       "37202658\t43882355\t128\tTotal_Loss_(album)\t&quot;What_Is_This_Heart?&quot;\tother\n",
+       "\t37813210\t12\tother-other\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "\t37813210\t37\tother-google\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "\t37813210\t11\tother-empty\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "\t37813210\t17\tother-wikipedia\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "595282\t37813210\t71\tHand_game\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "10077425\t37813210\t29\tAlutiiq_language\t&quot;Where_Are_Your_Keys?&quot;\tlink\n",
+       "261070\t37813210\t58\tTotal_physical_response\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "9058458\t37813210\t71\tSquamish_language\t&quot;Where_Are_Your_Keys?&quot;\tother\n",
+       "\t41363180\t15\tother-google\t&quot;Yes,_And&quot;_rule\tother\n",
+       "\t27111155\t13\tother-empty\t&quot;You've_Got&quot;_the_Touch\tother\n",
+       "\t27111155\t187\tother-google\t&quot;You've_Got&quot;_the_Touch\tother\n",
+       "\t35881722\t12\tother-google\t&quot;Yume&quot;_~Mugen_no_Kanata~\tother\n",
+       "29264213\t35881722\t10\tVivid_(band)\t&quot;Yume&quot;_~Mugen_no_Kanata~\tlink\n",
+       "\t36439291\t10\tother-wikipedia\t&quot;_(disambiguation)\tother\n",
+       "7468179\t36439291\t231\tQuotation_mark\t&quot;_(disambiguation)\tlink\n",
+       "\t36439291\t17\tother-empty\t&quot;_(disambiguation)\tother\n",
+       "202033\t\t115\tECT\t&quot;et_cetera&quot;\tredlink\n",
+       "202033\t\t244\tECT\t&quot;etc.&quot;\tredlink\n",
+       "\t11489847\t11\tother-wikipedia\t$1.99_Romances\tother\n",
+       "5885018\t11489847\t18\tGod_Street_Wine\t$1.99_Romances\tlink\n",
+       "\t11489847\t16\tother-empty\t$1.99_Romances\tother\n",
+       "\t39007767\t10\tother-wikipedia\t$100_Guitar_Project\tother\n",
+       "\t39007767\t33\tother-google\t$100_Guitar_Project\tother\n",
+       "\t39007767\t14\tother-empty\t$100_Guitar_Project\tother\n",
+       "1588040\t39007767\t10\tNick_Didkovsky\t$100_Guitar_Project\tlink\n",
+       "15608128\t39007767\t25\tIbanez_Jet_King\t$100_Guitar_Project\tlink\n",
+       "\t4042422\t86\tother-google\t$2\tother\n",
+       "\t4042422\t45\tother-wikipedia\t$2\tother\n",
+       "15580374\t4042422\t21\tMain_Page\t$2\tother\n",
+       "\t4042422\t42\tother-empty\t$2\tother\n",
+       "\t1419311\t38\tother-empty\t$20\tother\n",
+       "\t1419311\t20\tother-wikipedia\t$20\tother\n",
+       "\t1419311\t21\tother-google\t$20\tother\n",
+       "477331\t1419311\t10\tUnited_States_ten-dollar_bill\t$20\tother\n",
+       "\t24648172\t19\tother-google\t$200\tother\n",
+       "\t1245168\t16\tother-wikipedia\t$25_Million_Dollar_Hoax\tother\n",
+       "\t1245168\t14\tother-google\t$25_Million_Dollar_Hoax\tother\n",
+       "1023249\t1245168\t11\tGeorge_Gray_(television_personality)\t$25_Million_Dollar_Hoax\tlink\n",
+       "300567\t1245168\t21\tHidden_camera\t$25_Million_Dollar_Hoax\tlink\n",
+       "429120\t1245168\t19\tList_of_reality_television_programs\t$25_Million_Dollar_Hoax\tlink\n",
+       "36094463\t28612415\t11\tDiplo_production_discography\t$O$_(Die_Antwoord_album)\tother\n",
+       "28588118\t28612415\t624\t5_(Die_Antwoord_EP)\t$O$_(Die_Antwoord_album)\tother\n",
+       "29286930\t28612415\t385\tYolandi_Visser\t$O$_(Die_Antwoord_album)\tother\n",
+       "26182691\t28612415\t294\tWatkin_Tudor_Jones\t$O$_(Die_Antwoord_album)\tother\n",
+       "34571991\t28612415\t446\tTension_(Die_Antwoord_album)\t$O$_(Die_Antwoord_album)\tother\n",
+       "28196738\t28612415\t32\tMaxNormal.TV\t$O$_(Die_Antwoord_album)\tother\n",
+       "\t28612415\t241\tother-empty\t$O$_(Die_Antwoord_album)\tother\n",
+       "\t28612415\t541\tother-google\t$O$_(Die_Antwoord_album)\tother\n",
+       "\t28612415\t30\tother-wikipedia\t$O$_(Die_Antwoord_album)\tother\n",
+       "35421075\t28612415\t49\tEvil_Boy\t$O$_(Die_Antwoord_album)\tother\n",
+       "26050642\t28612415\t2527\tDie_Antwoord\t$O$_(Die_Antwoord_album)\tother\n",
+       "22155074\t10231968\t11\tC$_(disambiguation)\t$_(disambiguation)\tlink\n",
+       "2308563\t10231968\t140\tDollar_sign\t$_(disambiguation)\tlink\n",
+       "\t10231968\t14\tother-google\t$_(disambiguation)\tother\n",
+       "\t10231968\t88\tother-wikipedia\t$_(disambiguation)\tother\n",
+       "\t10231968\t116\tother-empty\t$_(disambiguation)\tother\n",
+       "3361673\t4213160\t25\tTown_&amp;_Country_(film)\t$_(film)\tlink\n",
+       "801116\t4213160\t31\tRichard_Brooks\t$_(film)\tlink\n",
+       "\t4213160\t75\tother-empty\t$_(film)\tother\n",
+       "171680\t4213160\t10\t1971_in_film\t$_(film)\tlink\n",
+       "313518\t4213160\t37\tGert_Fröbe\t$_(film)\tlink\n",
+       "48071\t4213160\t123\tGoldie_Hawn\t$_(film)\tlink\n",
+       "1022198\t4213160\t12\tHeist\t$_(film)\tlink\n",
+       "\t4213160\t10\tother-other\t$_(film)\tother\n",
+       "62809\t4213160\t140\tWarren_Beatty\t$_(film)\tlink\n",
+       "\t4213160\t40\tother-wikipedia\t$_(film)\tother\n",
+       "\t4213160\t86\tother-google\t$_(film)\tother\n",
+       "12379987\t4213160\t14\tList_of_crime_films_of_the_1970s\t$_(film)\tlink\n",
+       "11984730\t4597115\t11\tIndex_of_human_sexuality_articles\t$pread\tlink\n",
+       "\t4597115\t26\tother-empty\t$pread\tother\n",
+       "22814756\t4597115\t12\tMadison_Young\t$pread\tlink\n",
+       "\t4597115\t99\tother-google\t$pread\tother\n",
+       "\t4597115\t32\tother-wikipedia\t$pread\tother\n",
+       "33545134\t4597115\t27\tNica_Noelle\t$pread\tlink\n",
+       "326309\t1831030\t15\tRobert_Goulet\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "1681057\t1831030\t14\tTreehouse_of_Horror_XIII\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "\t1831030\t17\tother-bing\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "3620042\t1831030\t11\tSweet_Seymour_Skinner's_Baadasssss_Song\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tlink\n",
+       "57850\t1831030\t13\tSpringfield\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "4939444\t1831030\t84\tThe_Simpsons_(season_5)\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tlink\n",
+       "292279\t1831030\t32\tList_of_recurring_The_Simpsons_characters\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "140332\t1831030\t149\tList_of_The_Simpsons_episodes\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tlink\n",
+       "14059\t1831030\t77\tHoward_Hughes\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "\t1831030\t48\tother-wikipedia\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "\t1831030\t741\tother-google\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "598368\t1831030\t12\tJosh_Weinstein\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "2011385\t1831030\t29\tHomer_the_Vigilante\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tlink\n",
+       "1889929\t1831030\t12\tSaddlesore_Galactica\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "\t1831030\t270\tother-empty\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tother\n",
+       "3605255\t1831030\t44\tThe_Last_Temptation_of_Homer\t$pringfield_(or,_How_I_Learned_to_Stop_Worrying_and_Love_Legalized_Gambling)\tlink\n",
+       "\t1578140\t1820\tother-google\t%s\tother\n",
+       "\t1578140\t13\tother-twitter\t%s\tother\n",
+       "\t1578140\t233\tother-wikipedia\t%s\tother\n",
+       "\t1578140\t29756\tother-empty\t%s\tother\n",
+       "\t1578140\t31\tother-yahoo\t%s\tother\n",
+       "\t1578140\t103\tother-other\t%s\tother\n",
+       "\t1578140\t21\tother-bing\t%s\tother\n",
+       "\t3892558\t18\tother-other\t&amp;&amp;\tother\n",
+       "\t3892558\t14\tother-empty\t&amp;&amp;\tother\n",
+       "\t36532507\t43\tother-empty\t&amp;ME\tother\n",
+       "35026923\t36532507\t31\tMark_Waschke\t&amp;ME\tlink\n",
+       "\t36532507\t32\tother-google\t&amp;ME\tother\n",
+       "\t45238665\t2137\tother-google\t&amp;TV\tother\n",
+       "\t45238665\t199\tother-wikipedia\t&amp;TV\tother\n",
+       "\t45238665\t13\tother-other\t&amp;TV\tother\n",
+       "15580374\t45238665\t20\tMain_Page\t&amp;TV\tother\n",
+       "42888871\t45238665\t13\tZindagi_(TV_channel\n",
+       "</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%fs head dbfs:/databricks-datasets/wikipedia-datasets/data-001/clickstream/raw-uncompressed/2015_2_clickstream.tsv"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 2: Load the tsv data\n",
+    "\n",
+    "First, load the data into a data frame, choosing appropriate options."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df=(sqlContext.read.format(\"com.databricks.spark.csv\").options(header=\"true\",inferSchema=\"true\",mode=\"PERMISSIVE\",\n",
+    "                                                             delimiter='\\t').\n",
+    "  load('dbfs:/databricks-datasets/wikipedia-datasets/data-001/clickstream/raw-uncompressed/2015_2_clickstream.tsv'))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Verify the data by examining the first ten rows. Remember using `display()` to display the content of the dataframe."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>prev_id</th><th>curr_id</th><th>n</th><th>prev_title</th><th>curr_title</th><th>type</th></tr></thead><tbody><tr><td>null</td><td>3632887</td><td>121</td><td>other-google</td><td>!!</td><td>other</td></tr><tr><td>null</td><td>3632887</td><td>93</td><td>other-wikipedia</td><td>!!</td><td>other</td></tr><tr><td>null</td><td>3632887</td><td>46</td><td>other-empty</td><td>!!</td><td>other</td></tr><tr><td>null</td><td>3632887</td><td>10</td><td>other-other</td><td>!!</td><td>other</td></tr><tr><td>64486</td><td>3632887</td><td>11</td><td>!_(disambiguation)</td><td>!!</td><td>other</td></tr><tr><td>2061699</td><td>2556962</td><td>19</td><td>Louden_Up_Now</td><td>!!!_(album)</td><td>link</td></tr><tr><td>null</td><td>2556962</td><td>25</td><td>other-empty</td><td>!!!_(album)</td><td>other</td></tr><tr><td>null</td><td>2556962</td><td>16</td><td>other-google</td><td>!!!_(album)</td><td>other</td></tr><tr><td>null</td><td>2556962</td><td>44</td><td>other-wikipedia</td><td>!!!_(album)</td><td>other</td></tr><tr><td>64486</td><td>2556962</td><td>15</td><td>!_(disambiguation)</td><td>!!!_(album)</td><td>link</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "display(df.head(10))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Print the schema and the count of rows."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\">root\n",
+       "-- prev_id: integer (nullable = true)\n",
+       "-- curr_id: integer (nullable = true)\n",
+       "-- n: integer (nullable = true)\n",
+       "-- prev_title: string (nullable = true)\n",
+       "-- curr_title: string (nullable = true)\n",
+       "-- type: string (nullable = true)\n",
+       "\n",
+       "</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df.printSchema()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"><span class=\"ansired\">Out[</span><span class=\"ansired\">9</span><span class=\"ansired\">]: </span>22509897</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df.count()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "###  Step 3. What are the top 10 articles requested?\n",
+    "\n",
+    "- Please note that in the output, the column titles should read `curr_title` and `total_hits`"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, you should use the temporary table/view approach. Note that you can run SQL in Databricks notebooks by marking %sql at the beginning, e.g.\n",
+    "```\n",
+    "%sql\n",
+    "select * from mytable limit 10\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df.createOrReplaceTempView('df')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>total_hits</th><th>curr_title</th></tr></thead><tbody><tr><td>127500620</td><td>Main_Page</td></tr><tr><td>2559794</td><td>87th_Academy_Awards</td></tr><tr><td>2326175</td><td>Fifty_Shades_of_Grey</td></tr><tr><td>2244781</td><td>Alive</td></tr><tr><td>1709341</td><td>Chris_Kyle</td></tr><tr><td>1683892</td><td>Fifty_Shades_of_Grey_(film)</td></tr><tr><td>1614577</td><td>Deaths_in_2015</td></tr><tr><td>1545842</td><td>Birdman_(film)</td></tr><tr><td>1406530</td><td>Islamic_State_of_Iraq_and_the_Levant</td></tr><tr><td>1384193</td><td>Stephen_Hawking</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%sql\n",
+    "select sum(n) as total_hits, curr_title from df group by curr_title order by total_hits desc limit 10"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Command took 21.38 seconds"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "now please do the same using the API approach. Please note that the columns should read `curr_title` and `total_hits`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "import pyspark.sql.functions as f\n",
+    "from pyspark.sql.functions import col"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\">+--------------------+----------+\n",
+       "          curr_title|total_hits|\n",
+       "+--------------------+----------+\n",
+       "           Main_Page| 127500620|\n",
+       " 87th_Academy_Awards|   2559794|\n",
+       "Fifty_Shades_of_Grey|   2326175|\n",
+       "               Alive|   2244781|\n",
+       "          Chris_Kyle|   1709341|\n",
+       "Fifty_Shades_of_G...|   1683892|\n",
+       "      Deaths_in_2015|   1614577|\n",
+       "      Birdman_(film)|   1545842|\n",
+       "Islamic_State_of_...|   1406530|\n",
+       "     Stephen_Hawking|   1384193|\n",
+       "+--------------------+----------+\n",
+       "only showing top 10 rows\n",
+       "\n",
+       "</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "#df.select(df.n.cast('float'),df.curr_title).groupBy(\"curr_title\").agg(f.sum(df.n).alias(\"total_hits\")).sort(col('n').desc()).show(50)\n",
+    "df2=df.select(df.n,df.curr_title).groupBy(\"curr_title\").agg(f.sum(df.n).alias(\"total_hits\"))\n",
+    "df2.sort(col('total_hits').desc()).show(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Command took 21.64 seconds"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 4. Who sent the most traffic to Wikipedia in Feb 2015? \n",
+    "\n",
+    "- the columns should show `referer` (for prev_title) and `tot_hits`\n",
+    "- After you obtain the results, you should switch to the chart view to view a quick bar chart."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>prev_title</th><th>tot_hits</th></tr></thead><tbody><tr><td>other-google</td><td>1496209976</td></tr><tr><td>other-empty</td><td>347693595</td></tr><tr><td>other-wikipedia</td><td>129772279</td></tr><tr><td>other-other</td><td>77569671</td></tr><tr><td>other-bing</td><td>65962792</td></tr><tr><td>other-yahoo</td><td>48501171</td></tr><tr><td>Main_Page</td><td>29923502</td></tr><tr><td>other-twitter</td><td>19241298</td></tr><tr><td>other-facebook</td><td>2314026</td></tr><tr><td>87th_Academy_Awards</td><td>1680675</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%sql\n",
+    "select prev_title, sum(n) as tot_hits from df group by prev_title order by tot_hits desc limit 10"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Command took 19.45 seconds"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 5. What percentage of the traffic Wikipedia received came from other English Wikipedia pages?\n",
+    "\n",
+    "- the percentage should be calculated as (# of hits from other wiki pages / # of all hits)\n",
+    "\n",
+    "Hint: External traffic is indicated by `prev_title` being other-google, other-twitter, ..., other_empty and other-other. Internal traffic is indicated by the rest, including other-internal and other-wikipedia."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "externalhits=spark.sql(\"select sum(n) from df where prev_title like 'other-%' and prev_title != 'other-internal' and prev_title !='other-wikipedia'\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>sum(n)</th></tr></thead><tbody><tr><td>2057492529</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%sql\n",
+    "\n",
+    "select sum(n) from df where prev_title like 'other-%' and prev_title != 'other-internal' and prev_title !='other-wikipedia'\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>sum(n)</th></tr></thead><tbody><tr><td>3283067885</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%sql\n",
+    "select sum(n) from df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "externalhits=2057492529\n",
+    "allhits=3283067885"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\">0.37330186244382213\n",
+       "</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "internalpercentage=(allhits-externalhits)/allhits\n",
+    "print(internalpercentage)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Command took 25 seconds"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 6. What does the traffic inflow vs outflow look like for the most requested pages?\n",
+    "\n",
+    "- create a dataframe `flowdf` with the following fields, \"curr_title\",\"in_count\",\"out_count\",\"ratio\", where ratio is out_count/in_count.\n",
+    "- display the top 10 rows of `flowdf` ordered by tota requests (in_count)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\">+--------+--------+---+--------------------+-------------+-----+\n",
+       " prev_id| curr_id|  n|          prev_title|   curr_title| type|\n",
+       "+--------+--------+---+--------------------+-------------+-----+\n",
+       "    null| 3632887|121|        other-google|           !!|other|\n",
+       "    null| 3632887| 93|     other-wikipedia|           !!|other|\n",
+       "    null| 3632887| 46|         other-empty|           !!|other|\n",
+       "    null| 3632887| 10|         other-other|           !!|other|\n",
+       "   64486| 3632887| 11|  !_(disambiguation)|           !!|other|\n",
+       " 2061699| 2556962| 19|       Louden_Up_Now|  !!!_(album)| link|\n",
+       "    null| 2556962| 25|         other-empty|  !!!_(album)|other|\n",
+       "    null| 2556962| 16|        other-google|  !!!_(album)|other|\n",
+       "    null| 2556962| 44|     other-wikipedia|  !!!_(album)|other|\n",
+       "   64486| 2556962| 15|  !_(disambiguation)|  !!!_(album)| link|\n",
+       "  600744| 2556962|297|                 !!!|  !!!_(album)| link|\n",
+       "    null| 6893310| 11|         other-empty|!Hero_(album)|other|\n",
+       " 1921683| 6893310| 26|               !Hero|!Hero_(album)| link|\n",
+       "    null| 6893310| 16|     other-wikipedia|!Hero_(album)|other|\n",
+       "    null| 6893310| 23|        other-google|!Hero_(album)|other|\n",
+       " 8127304|22602473| 16|     Jericho_Rosales|   !Oka_Tokat| link|\n",
+       "35978874|22602473| 20|List_of_telenovel...|   !Oka_Tokat| link|\n",
+       "    null|22602473| 57|        other-google|   !Oka_Tokat|other|\n",
+       "    null|22602473| 12|     other-wikipedia|   !Oka_Tokat|other|\n",
+       "    null|22602473| 23|         other-empty|   !Oka_Tokat|other|\n",
+       "+--------+--------+---+--------------------+-------------+-----+\n",
+       "only showing top 20 rows\n",
+       "\n",
+       "</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "dfin=df.select(df.n,df.curr_title).groupBy(\"curr_title\").agg(f.sum(df.n).alias(\"in_count\"))\n",
+    "dfout=df.select(df.n,df.prev_title.alias('curr_title')).groupBy(\"curr_title\").agg(f.sum(df.n).alias(\"out_count\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 34,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>curr_title</th><th>in_count</th><th>out_count</th><th>ratio</th></tr></thead><tbody><tr><td>Main_Page</td><td>127500620</td><td>29923502</td><td>0.23469299208113656</td></tr><tr><td>87th_Academy_Awards</td><td>2559794</td><td>1680675</td><td>0.656566504960946</td></tr><tr><td>Fifty_Shades_of_Grey</td><td>2326175</td><td>1146401</td><td>0.4928266360011607</td></tr><tr><td>Alive</td><td>2244781</td><td>3480</td><td>0.0015502625868625936</td></tr><tr><td>Chris_Kyle</td><td>1709341</td><td>869974</td><td>0.5089528654610168</td></tr><tr><td>Fifty_Shades_of_Grey_(film)</td><td>1683892</td><td>1375687</td><td>0.816968665448853</td></tr><tr><td>Deaths_in_2015</td><td>1614577</td><td>1135121</td><td>0.7030454416234098</td></tr><tr><td>Birdman_(film)</td><td>1545842</td><td>796141</td><td>0.5150209400443253</td></tr><tr><td>Islamic_State_of_Iraq_and_the_Levant</td><td>1406530</td><td>794907</td><td>0.5651546714254229</td></tr><tr><td>Stephen_Hawking</td><td>1384193</td><td>644088</td><td>0.46531661408488556</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "\n",
+    "flowdf=dfin.join(dfout,dfin.curr_title==dfout.curr_title).select(dfin.curr_title,dfin.in_count, dfout.out_count,                                                       (dfout.out_count/dfin.in_count).alias('ratio')).sort(col('in_count').desc())\n",
+    "\n",
+    "display(flowdf.head(10))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Command took 35.48 seconds"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Step 7. What's the inflow and outflow like for the page `Apache Spark`?\n",
+    "- display the in and out flows with more than 100 hits in special string form (saved to a string variable `rows`), for instance.\n",
+    "  + `['Apache_Spark','Amazon_S3',110],['Apache_Hadoop','Amazon_Spark',150],....`\n",
+    "  + note that both in and out flow are shown. the three fields are from, to, and weight respectively.\n",
+    "  + this string variable is used in a Java script for visualization."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "create string variable `rows`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "df1=df.where(df.prev_title.isin('other-empty', 'other-google','other-yahoo'\n",
+    ", 'other-bing', 'other-facebook', 'other-twitter', 'other-other'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "inflow=df1.filter(df1.curr_title=='Apache_Spark').select(df1.prev_title.alias('from'),df1.curr_title.alias('to'),df1.n.alias('weight')).filter(df1.n>100)\n",
+    "outflow=df.filter(df.prev_title=='Apache_Spark').select(df.prev_title.alias('from'),df.curr_title.alias('to'),df.n.alias('weight')).filter(df.n>100)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "result=inflow.union(outflow)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "mylist=[[row['from'],row['to'],int(row['weight'])] for row in result.collect()]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 42,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"></div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "rows = str(mylist)[1:-1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "display content of string variable `rows`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .ansiout {\n",
+       "    display: block;\n",
+       "    unicode-bidi: embed;\n",
+       "    white-space: pre-wrap;\n",
+       "    word-wrap: break-word;\n",
+       "    word-break: break-all;\n",
+       "    font-family: \"Source Code Pro\", \"Menlo\", monospace;;\n",
+       "    font-size: 13px;\n",
+       "    color: #555;\n",
+       "    margin-left: 4px;\n",
+       "    line-height: 19px;\n",
+       "  }\n",
+       "</style>\n",
+       "<div class=\"ansiout\"><span class=\"ansired\">Out[</span><span class=\"ansired\">25</span><span class=\"ansired\">]: </span>&quot;[&apos;other-google&apos;, &apos;Apache_Spark&apos;, 14361], [&apos;other-empty&apos;, &apos;Apache_Spark&apos;, 1543], [&apos;other-bing&apos;, &apos;Apache_Spark&apos;, 186], [&apos;other-other&apos;, &apos;Apache_Spark&apos;, 587], [&apos;other-yahoo&apos;, &apos;Apache_Spark&apos;, 126], [&apos;Apache_Spark&apos;, &apos;Apache_Hadoop&apos;, 808], [&apos;Apache_Spark&apos;, &apos;Apache_Mesos&apos;, 322], [&apos;Apache_Spark&apos;, &apos;MapReduce&apos;, 288], [&apos;Apache_Spark&apos;, &apos;OpenStack&apos;, 185], [&apos;Apache_Spark&apos;, &apos;Scala_(programming_language)&apos;, 153], [&apos;Apache_Spark&apos;, &apos;Stream_processing&apos;, 200], [&apos;Apache_Spark&apos;, &apos;Amazon_S3&apos;, 110], [&apos;Apache_Spark&apos;, &apos;Apache_Cassandra&apos;, 319], [&apos;Apache_Spark&apos;, &apos;Matei_Zaharia&apos;, 643], [&apos;Apache_Spark&apos;, &apos;Vowpal_Wabbit&apos;, 146]&quot;</div>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "rows"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "\n",
+       "<!DOCTYPE html>\n",
+       "<body>\n",
+       "<script type=\"text/javascript\"\n",
+       "           src=\"https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['sankey']}]}\">\n",
+       "</script>\n",
+       "\n",
+       "<div id=\"sankey_multiple\" style=\"width: 800px; height: 640px;\"></div>\n",
+       "\n",
+       "<script type=\"text/javascript\">\n",
+       "google.setOnLoadCallback(drawChart);\n",
+       "   function drawChart() {\n",
+       "    var data = new google.visualization.DataTable();\n",
+       "    data.addColumn('string', 'From');\n",
+       "    data.addColumn('string', 'To');\n",
+       "    data.addColumn('number', 'Weight');\n",
+       "    data.addRows([\n",
+       "['other-google', 'Apache_Spark', 14361], ['other-empty', 'Apache_Spark', 1543], ['other-bing', 'Apache_Spark', 186], ['other-other', 'Apache_Spark', 587], ['other-yahoo', 'Apache_Spark', 126], ['Apache_Spark', 'Apache_Hadoop', 808], ['Apache_Spark', 'Apache_Mesos', 322], ['Apache_Spark', 'MapReduce', 288], ['Apache_Spark', 'OpenStack', 185], ['Apache_Spark', 'Scala_(programming_language)', 153], ['Apache_Spark', 'Stream_processing', 200], ['Apache_Spark', 'Amazon_S3', 110], ['Apache_Spark', 'Apache_Cassandra', 319], ['Apache_Spark', 'Matei_Zaharia', 643], ['Apache_Spark', 'Vowpal_Wabbit', 146]\n",
+       "    ]);\n",
+       "    // Set chart options\n",
+       "    var options = {\n",
+       "      width: 600,\n",
+       "      sankey: {\n",
+       "        link: { color: { fill: '#grey', fillOpacity: 0.3 } },\n",
+       "        node: { color: { fill: '#a61d4c' },\n",
+       "                label: { color: 'black' } },\n",
+       "      }\n",
+       "    };\n",
+       "    // Instantiate and draw our chart, passing in some options.\n",
+       "    var chart = new google.visualization.Sankey(document.getElementById('sankey_multiple'));\n",
+       "    chart.draw(data, options);\n",
+       "   }\n",
+       "</script>\n",
+       "  </body>\n",
+       "</html>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Execuate the following script to see a visualization of in/out flows for the Apache Spark page\n",
+    "# Note you may need to disable your privacy browser extensions to make this work (especially Privacy Badger)\n",
+    "# We use google Visualization library to create a Sankey diagram. Sankey diagrams are a flow diagram, in which the width of the arrows are shown proportionally to the flow quantify traffic\n",
+    "\n",
+    "content = \"\"\"\n",
+    "<!DOCTYPE html>\n",
+    "<body>\n",
+    "<script type=\"text/javascript\"\n",
+    "           src=\"https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['sankey']}]}\">\n",
+    "</script>\n",
+    "\n",
+    "<div id=\"sankey_multiple\" style=\"width: 800px; height: 640px;\"></div>\n",
+    "\n",
+    "<script type=\"text/javascript\">\n",
+    "google.setOnLoadCallback(drawChart);\n",
+    "   function drawChart() {\n",
+    "    var data = new google.visualization.DataTable();\n",
+    "    data.addColumn('string', 'From');\n",
+    "    data.addColumn('string', 'To');\n",
+    "    data.addColumn('number', 'Weight');\n",
+    "    data.addRows([\n",
+    "\"\"\"\n",
+    "  \n",
+    "content = content + rows\n",
+    "\n",
+    "content = content + \"\"\"\n",
+    "    ]);\n",
+    "    // Set chart options\n",
+    "    var options = {\n",
+    "      width: 600,\n",
+    "      sankey: {\n",
+    "        link: { color: { fill: '#grey', fillOpacity: 0.3 } },\n",
+    "        node: { color: { fill: '#a61d4c' },\n",
+    "                label: { color: 'black' } },\n",
+    "      }\n",
+    "    };\n",
+    "    // Instantiate and draw our chart, passing in some options.\n",
+    "    var chart = new google.visualization.Sankey(document.getElementById('sankey_multiple'));\n",
+    "    chart.draw(data, options);\n",
+    "   }\n",
+    "</script>\n",
+    "  </body>\n",
+    "</html>\"\"\"\n",
+    "\n",
+    "displayHTML(content)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Reflection question\n",
+    "\n",
+    "Comparing the recorded time of this and last homework assignments. Does the dataframe works faster than RDD? Why or why not?"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "d\n",
+    "\n",
+    "Generally, dataframe works better than RDD. The computation time is reduced and there are several reasons for this:\n",
+    "\n",
+    "\n",
+    "a. Dataframe has catalyst optimizer so that the engine can find the better execution plans than RDD\n",
+    "\n",
+    "b. Dataframe can serialize the data in memory in a format so that the transformation and other performance will be much faster. \n",
+    "\n",
+    "c. Dataframe and RDD treat data differently because they have different structures. To be specific, dataframe makes data into named columns so that it is simpler when we try to execute the data."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.3"
+  },
+  "name": "homework5-part3",
+  "notebookId": 834761593775900,
+  "toc": {
+   "base_numbering": 1,
+   "nav_menu": {},
+   "number_sections": true,
+   "sideBar": true,
+   "skip_h1_title": false,
+   "title_cell": "Table of Contents",
+   "title_sidebar": "Contents",
+   "toc_cell": false,
+   "toc_position": {},
+   "toc_section_display": true,
+   "toc_window_display": false
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
